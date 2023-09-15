@@ -1,0 +1,8 @@
+{
+  "name": "cstm-fileprocess",
+  "version": "0.0.1",
+  "description": "Обертка над стандартной библиотекой path, для комфорта",
+  "main": "fileprocess.js",
+  "author": "TarhunNyan",
+  "license": "GPL v3"
+}
