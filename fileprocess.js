@@ -1,5 +1,6 @@
 // fileProcess.js v0.0.5
 
+const { promises } = require('dns');
 var fs = require('fs');
 var path = require('path');
 
@@ -15,45 +16,58 @@ function path__join(paths) {
 }
 
 /**
+ * Приводим к одному виду путь
+ * @param {string} path Путь
+ * @return {string} Путь с обновленным сепаратором
+ */
+function path__updateSeparator(path) {
+    if (path.indexOf(path.sep) === -1) { return path__join([path]) }
+    return path;
+}
+
+/**
  * Создаем папку/файл по указанном пути
  * @param {string} path Путь к папке/файлу
- * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
  * @param {string} data Строка которая записывается в файл, если это файл
+ * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
  * @return {undefined} 
  */
 // function mkdirSync(path, isFile = undefined, data = '') {
-function path__create(path, isFile = undefined, data = '') {
+function node__create(path, data = '', isFile = undefined) {
     if (isFile === undefined) {
-        const extension = edpGetFileExt(path);
+        const extension = path__getExt(path);
         if (extension === '.') {
             throw new Error(`У пути ${path} в конце точка, а extension не написан! `)
         }
         isFile = extension === '' ? false : true;
     }
-    console.log(isFile);
 
     if (!isFile) {
-        return fs.mkdirSync(path, { recursive: true });
+        fs.mkdirSync(path, { recursive: true });
+        return true;
     }
     if (isFile) {
-        fs.mkdirSync(edpDelFileName(path), { recursive: true });
-        return writeFileSync(path, data);
+        fs.mkdirSync(path__delFileName(path), { recursive: true });
+        file__write(path, data);
+        return true;
     }
+
+    return false;
 }
 
 /**
  * Создаем папку/файл по указанном пути(асинхронно)
  * @param {string} paths Путь к папке/файлу
- * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
  * @param {string} data Строка которая записывается в файл, если это файл
- * @return {string}  Возвращает Promise:
+ * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
+ * @return {promises}  Возвращает Promise:
  * - Если записал, то resolve(data)
  * - Если ошибка записи, то reject(err)
  */
 // function mkdir(path, isFile = undefined, data = '') {
-function path__createAsync(path, isFile = undefined, data = '') {
+function node__createAsync(path, data = '', isFile = undefined) {
     if (isFile === undefined) {
-        const extension = edpGetFileExt(path);
+        const extension = path__getExt(path);
         if (extension === '.') {
             throw new Error(`У пути ${path} в конце точка, а extension не написан! `)
         }
@@ -64,7 +78,7 @@ function path__createAsync(path, isFile = undefined, data = '') {
         return fs.mkdir(path, { recursive: true }, () => { });
     }
     if (isFile) {
-        fs.mkdirSync(edpDelFileName(path), { recursive: true });
+        fs.mkdirSync(path__delFileName(path), { recursive: true });
         return writeFile(path, data);
     }
 }
@@ -85,8 +99,19 @@ function path__getDir(filepath) {
  * @param {string} filepath Путь к файлу
  * @return Имя файла 
  */
-// function edpGetFileName(filepath) {
 function path__getFileName(filepath) {
+    const parsing = path.parse(filepath);
+    if (parsing.ext != '') { return parsing.name; }
+    return '';
+}
+
+/**
+ * Получаем имя последней папки/файла в пути
+ * @param {string} filepath Путь к файлу/папке
+ * @return Имя последней папки/файла 
+ */
+// function edpGetFileName(filepath) {
+function path__getLastName(filepath) {
     const parsing = path.parse(filepath);
     return parsing.name;
 }
@@ -103,13 +128,27 @@ function path__getExt(filepath) {
 }
 
 /**
+ * Получение папки/файла по индексу
+ * @param {string} filepath Путь к файлу
+ * @param {number} index Номер папки/файла в пути
+ * @return Полуенное имя папки/файла
+ */
+// function edpChangeSubPath(filepath, fromSubpath, toSubpath) {
+function path__getByInd(filepath, index) {
+    filepath = path__updateSeparator(filepath);
+    const arr = filepath.split(path.sep);
+    return arr.at(index);
+}
+
+/**
  * Удаляем путь до файла, оставляем только файл и разрешение
  * @param {string} filepath Путь к файлу
  * @return Имя файла и зазрешение 
  */
 function path__delDir(filepath) {
-    const parsing = path.parse(filepath);
-    return parsing.name + parsing.ext;
+    const name = path__getFileName(filepath);
+    const ext = path__getExt(filepath);
+    return name + ext;
 }
 
 /**
@@ -118,6 +157,16 @@ function path__delDir(filepath) {
  * @return Путь к папке с файлом 
  */
 function path__delFileName(filepath) {
+    if (path__getExt(filepath) === '') { return path__updateSeparator(filepath); }
+    return path__getDir(filepath);
+}
+
+/**
+ * Удаляет имя последней папки/файла из пути
+ * @param {string} filepath Путь к папке/файлу
+ * @return Путь к папке/файлу
+ */
+function path__delLastName(filepath) {
     return path__getDir(filepath);
 }
 
@@ -130,48 +179,58 @@ function path__delFileName(filepath) {
 function path__delExt(filepath) {
     const parsing = path.parse(filepath);
     const joining = parsing.dir != '' ? [parsing.dir, parsing.name] : [parsing.name];
-    return joining.join(path.sep);
+    return path__join(joining);
 }
+
 
 /**
  * Замена части пути к файлу
  * @param {string} filepath Путь к файлу
- * @param {string[]} fromSubpath Часть пути к файлу котый меняем
- * @param {string[]} fromSubpath Часть пкти к файлу НА который меняем
+ * @param {string} fromSubpath Часть пути к файлу котый меняем
+ * @param {string} toSubpath Часть пкти к файлу НА который меняем
  * @return Путь к файлу с измененным подпутем
  */
 // function edpChangeSubPath(filepath, fromSubpath, toSubpath) {
-function path__replaceDir(filepath, fromSubpath, toSubpath) {
-    const fSubpath = fromSubpath.join(path.sep);
-    const tSubpath = toSubpath.join(path.sep);
+function path__replaceDir(filepath, fromSubpath = '', toSubpath = '') {
+    filepath = path__updateSeparator(filepath);
 
-    return filepath.replace(fSubpath, tSubpath)
+    if (fromSubpath === '') { return filepath; }
+
+    fromSubpath = path__updateSeparator(fromSubpath);
+    toSubpath = path__updateSeparator(toSubpath);
+
+    const ind = filepath.indexOf(fromSubpath);
+
+    if (ind === -1) { return filepath; }
+
+    const arr = [filepath.slice(0, ind), toSubpath, filepath.slice(ind + fromSubpath.length)]
+
+    return path__join(arr);
 }
 
 /**
  * Заменяет имя файла
  * @param {string} filepath Путь к файлу
- * @param {string} to Имя файла на которое производим замену
+ * @param {string} newFileName Имя файла на которое производим замену
  * @return Путь к файлу с измененным разрешением
  */
 // function edpChangeFileExt(filepath, from, to) {
-function path__replaceFileName(filepath, to) {
+function path__replaceFileName(filepath, newFileName) {
     const parsing = path.parse(filepath);
-    return path.resolve(parsing.dir, parsing.name) + ext;
+    return path.resolve(parsing.dir, newFileName) + parsing.ext;
 }
 
 /**
  * Заменяет разрешение файла
  * @param {string} filepath Путь к файлу
- * @param {(string | '.')} from Разрешение которое нужно поменять. '.' - любое разрешение файла
  * @param {string} to Разрешение на которое меняем
  * @return Путь к файлу с измененным разрешением
  */
 // function edpChangeFileExt(filepath, from, to) {
-function path__replaceExt(filepath, from, to) {
+function path__replaceExt(filepath, newExtension) {
     const parsing = path.parse(filepath);
-    const ext = (parsing.ext === from || from === '.') ? to : parsing.ext;
-    return path.resolve(parsing.dir, parsing.name) + ext;
+    if (newExtension[0] != '.') { newExtension = '.' + newExtension; }
+    return path.resolve(parsing.dir, parsing.name) + newExtension;
 }
 
 /**
@@ -242,7 +301,8 @@ function file__readAsync(filepath, encoding = 'utf-8') {
  */
 // function readJSON(filepath, encoding = 'utf-8') {
 function file__readJSON(filepath, encoding = 'utf-8') {
-    return fs.readFileSync(filepath, encoding);
+    const data = fs.readFileSync(filepath, encoding);
+    return JSON.parse(data.toString());
 }
 
 /**
@@ -300,6 +360,7 @@ function file__writeAsync(filepath, data) {
 function file__writeJSON(filepath, json) {
     const jsonData = JSON.stringify(json);
     fs.writeFileSync(filepath, jsonData);
+    return true;
 }
 
 /**
@@ -322,17 +383,28 @@ function file__writeJSONAsync(filepath, json) {
 }
 
 /**
+ * Удаляем файл с диска
+ * @param {string} filepath Путь к файлу
+ * @returns {boolean} Возвращает удачно или неудачно закончилась операция
+ */
+function file__delete(filepath) {
+    if (file__isExist(filepath)) { fs.unlinkSync(filepath); }
+    return true;
+}
+
+/**
  * Получаем список файлов
- * @param {string} filepath Путь к папке из которой получаем список
+ * @param {string} path Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до файлов
  */
 // function getFileList(filepath) {
-function dir__getFileList(filepath) {
-    const dirList = fs.readdirSync();
+function dir__getFileList(path) {
+    const cntList = fs.readdirSync(path);
+    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
     const res = [];
-    dirList.forEach(dir => {
-        if (dir.isFile()) { res.push(dir.name) }
-    });
+
+    for (path of newList) { if (fs.statSync(path).isFile()) { res.push(path) } }
+
     return res;
 }
 
@@ -360,18 +432,41 @@ function dir__getFileListAsync(filepath) {
 }
 
 /**
+ * Удаляем папку со всем содержимым с диска
+ * @param {string} path Путь к папке
+ * @returns {boolean} Возвращает удачно или неудачно закончилась операция
+ */
+function dir__delete(path) {
+    if (file__isExist(path)) { fs.rmSync(path, { force: true, recursive: true }); }
+    return true;
+}
+
+/**
  * Получаем список папок
- * @param {string} filepath Путь к папке из которой получаем список
+ * @param {string} path Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до папок
  */
-// function getFileList(filepath) {
-function dir__getDirList(filepath) {
-    const dirList = fs.readdirSync();
+// function getFileList(path) {
+function dir__getDirList(path) {
+    const cntList = fs.readdirSync(path);
+    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
     const res = [];
-    dirList.forEach(dir => {
-        if (dir.isDirectory()) { res.push(dir.name) }
-    });
+
+    for (path of newList) { if (fs.statSync(path).isDirectory()) { res.push(path) } }
+
     return res;
+}
+
+/**
+ * Получаем список папок
+ * @param {string} filepath Путь к папке из которой получаем список
+ * @param {boolean} isFull Возвращать полный путь к папке?
+ * @param {boolean} isRecursive Рекурсивно спускаемся по папкам?
+ * @param {string[]} result Начальное значение, к которому добавляются новые результаты поиска
+ * @returns {[string]} Массив с путями до папок
+ */
+function dir__getDirListRecursive(filepath, isFull = false, isRecursive = false, result = []) {
+
 }
 
 /**
@@ -398,17 +493,38 @@ function dir__getDirListAsync(filepath) {
 }
 
 /**
- * Получаем список папок
- * @param {string} filepath Путь к папке из которой получаем список
- * @returns {[string]} Массив с путями до папок
+ * Получаем список папок/файлов
+ * @param {string} path Путь к папке из которой получаем список
+ * @returns {[string]} Массив с путями до папок/файлов
  */
 // function getFileList(filepath) {
-function dir__getContentList(filepath) {
-    const dirList = fs.readdirSync();
+function dir__getContentList(path) {
+    const cntList = fs.readdirSync(path);
+    const res = cntList.map(cnt => { return path__join([path, cnt]) });
+
+    return res;
+}
+
+/**
+ * Получаем список папок/файлов рекурсивно
+ * @param {string} path Путь к папке из которой получаем список
+ * @returns {[string]} Массив с путями до папок/файлов
+ */
+// function getFileList(filepath) {
+function dir__getContentList_Recursive(path) {
+    const cntList = fs.readdirSync(path);
+    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
     const res = [];
-    dirList.forEach(dir => {
-        res.push(dir.name)
-    });
+
+    for (path of newList) {
+        const stat = fs.statSync(path);
+        if (stat.isDirectory()) {
+            res.push(path);
+            Array.prototype.push.apply(res, dir__getContentList_Recursive(path));
+        }
+        if (stat.isFile()) { res.push(path) }
+    }
+
     return res;
 }
 
@@ -601,14 +717,22 @@ const filesCompare = function (paths1, paths2, workingExts, compare) {
 
 module.exports = {
     path__join,
-    path__create,
-    path__createAsync,
+    path__updateSeparator,
+
+    node__create,
+    node__createAsync,
+
     path__getDir,
     path__getFileName,
+    path__getLastName,
     path__getExt,
+    path__getByInd,
+
     path__delDir,
     path__delFileName,
+    path__delLastName,
     path__delExt,
+
     path__replaceDir,
     path__replaceFileName,
     path__replaceExt,
@@ -623,6 +747,7 @@ module.exports = {
     file__writeAsync,
     file__writeJSON,
     file__writeJSONAsync,
+    file__delete,
 
     dir__getFileList,
     dir__getFileListAsync,
@@ -630,4 +755,6 @@ module.exports = {
     dir__getDirListAsync,
     dir__getContentList,
     dir__getContentListAsync,
+    dir__getContentList_Recursive,
+    dir__delete,
 }
