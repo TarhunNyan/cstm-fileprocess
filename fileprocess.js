@@ -409,6 +409,20 @@ function dir__getFileList(path) {
 }
 
 /**
+ * Получаем список файлов
+ * @param {string} path Путь к папке из которой получаем список
+ * @returns {[string]} Массив с путями до файлов
+ */
+function dir__getFileList_Recursive(path) {
+    const contentList = dir__getContentList_Recursive(path, true);
+    const res = [];
+
+    for (path of contentList) { if (fs.statSync(path).isFile()) { res.push(path) } }
+
+    return res;
+}
+
+/**
  * Получаем список файлов(асинхронно)
  * @param {string} filepath Путь к папке из которой получаем список
  * @returns {Promise} Возвращает Promise:
@@ -459,14 +473,17 @@ function dir__getDirList(path) {
 
 /**
  * Получаем список папок
- * @param {string} filepath Путь к папке из которой получаем список
- * @param {boolean} isFull Возвращать полный путь к папке?
- * @param {boolean} isRecursive Рекурсивно спускаемся по папкам?
- * @param {string[]} result Начальное значение, к которому добавляются новые результаты поиска
+ * @param {string} path Путь к папке из которой получаем список
+ * @param {boolean} isEndPoint Добавляет только папки являющиеся конечными
  * @returns {[string]} Массив с путями до папок
  */
-function dir__getDirListRecursive(filepath, isFull = false, isRecursive = false, result = []) {
+function dir__getDirList_Recursive(path, isEndPoint = false) {
+    const contentList = dir__getContentList_Recursive(path, isEndPoint);
+    const res = [];
 
+    for (path of contentList) { if (fs.statSync(path).isDirectory()) { res.push(path) } }
+
+    return res;
 }
 
 /**
@@ -508,10 +525,11 @@ function dir__getContentList(path) {
 /**
  * Получаем список папок/файлов рекурсивно
  * @param {string} path Путь к папке из которой получаем список
+ * @param {boolean} isEndPoint Добавляет только папки и файлы являющиеся конечными
  * @returns {[string]} Массив с путями до папок/файлов
  */
 // function getFileList(filepath) {
-function dir__getContentList_Recursive(path) {
+function dir__getContentList_Recursive(path, isEndPoint = false) {
     const cntList = fs.readdirSync(path);
     const newList = cntList.map(cnt => { return path__join([path, cnt]) });
     const res = [];
@@ -519,8 +537,9 @@ function dir__getContentList_Recursive(path) {
     for (path of newList) {
         const stat = fs.statSync(path);
         if (stat.isDirectory()) {
-            res.push(path);
-            Array.prototype.push.apply(res, dir__getContentList_Recursive(path));
+            const contentDir = dir__getContentList_Recursive(path, isEndPoint);
+            if (contentDir.length === 0 || isEndPoint === false) { res.push(path); }
+            if (contentDir.length != 0) { Array.prototype.push.apply(res, contentDir); }
         }
         if (stat.isFile()) { res.push(path) }
     }
@@ -751,8 +770,10 @@ module.exports = {
 
     dir__getFileList,
     dir__getFileListAsync,
+    dir__getFileList_Recursive,
     dir__getDirList,
     dir__getDirListAsync,
+    dir__getDirList_Recursive,
     dir__getContentList,
     dir__getContentListAsync,
     dir__getContentList_Recursive,

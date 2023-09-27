@@ -206,6 +206,32 @@ describe(
             ]);
         })
 
+        it("dir__getFileList_Recursive", () => {
+            expect(fp.dir__getFileList_Recursive(baseFolder)).toEqual([
+                fp.path__join([baseFolder, 'folder1', 'lvl3-1.txt']),
+                fp.path__join([baseFolder, 'folder1', 'lvl3-2.txt']),
+                fp.path__join([baseFolder, 'folder2', 'lvl3-3.txt']),
+                fp.path__join([baseFolder, 'folder4', 'folder', 'lvl4.txt']),
+                fp.path__join([baseFolder, 'lvl1.txt']),
+            ]);
+        })
+
+        it("dir__getDirList_Recursive", () => {
+            expect(fp.dir__getDirList_Recursive(baseFolder)).toEqual([
+                fp.path__join([baseFolder, 'folder1']),
+                fp.path__join([baseFolder, 'folder2']),
+                fp.path__join([baseFolder, 'folder3']),
+                fp.path__join([baseFolder, 'folder4']),
+                fp.path__join([baseFolder, 'folder4', 'folder']),
+            ]);
+        })
+
+        it("dir__getDirList_Recursive, isEndPoint=true", () => {
+            expect(fp.dir__getDirList_Recursive(baseFolder, true)).toEqual([
+                fp.path__join([baseFolder, 'folder3']),
+            ]);
+        })
+
         it("dir__getContentList_Recursive", () => {
             expect(fp.dir__getContentList_Recursive(baseFolder)).toEqual([
                 fp.path__join([baseFolder, 'folder1']),
@@ -221,6 +247,16 @@ describe(
             ]);
         })
 
+        it("dir__getContentList_Recursive, isEndPoint=true", () => {
+            expect(fp.dir__getContentList_Recursive(baseFolder, true)).toEqual([
+                fp.path__join([baseFolder, 'folder1', 'lvl3-1.txt']),
+                fp.path__join([baseFolder, 'folder1', 'lvl3-2.txt']),
+                fp.path__join([baseFolder, 'folder2', 'lvl3-3.txt']),
+                fp.path__join([baseFolder, 'folder3']),
+                fp.path__join([baseFolder, 'folder4', 'folder', 'lvl4.txt']),
+                fp.path__join([baseFolder, 'lvl1.txt']),
+            ]);
+        })
 
     }
 );
