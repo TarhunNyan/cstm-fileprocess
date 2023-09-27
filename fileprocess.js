@@ -16,6 +16,15 @@ function path__join(paths) {
 }
 
 /**
+ * Системная информация о папке/файле. Дата последнего редактирования
+ * @param {string} path Путь
+ * @return {number} Дата последнего редактирования
+ */
+function path__statLastEdit(path) {
+    return fs.statSync(path).mtime;
+}
+
+/**
  * Приводим к одному виду путь
  * @param {string} path Путь
  * @return {string} Путь с обновленным сепаратором
@@ -573,6 +582,7 @@ function dir__getContentListAsync(filepath) {
 module.exports = {
     path__join,
     path__updateSeparator,
+    path__statLastEdit,
 
     node__create,
     node__createAsync,
