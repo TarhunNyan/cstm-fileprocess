@@ -239,7 +239,7 @@ function path__replaceExt(filepath, newExtension) {
  * @returns {boolean} Возвращает существует или нет такой путь
  */
 // function isExistSync(filepath) {
-function file__isExist(filepath) {
+function path__isExist(filepath) {
     return fs.existsSync(filepath);
 }
 
@@ -252,7 +252,7 @@ function file__isExist(filepath) {
  * - Если пути нет, то reject(data)
  */
 // function isExist(filepath, data = {}) {
-function file__isExistAsync(filepath, data = {}) {
+function path__isExistAsync(filepath, data = {}) {
     return new Promise((resolve, reject) => {
         fs.access(filepath, fs.constants.F_OK, (err) => {
             if (err === null) { resolve(data) }
@@ -388,7 +388,7 @@ function file__writeJSONAsync(filepath, json) {
  * @returns {boolean} Возвращает удачно или неудачно закончилась операция
  */
 function file__delete(filepath) {
-    if (file__isExist(filepath)) { fs.unlinkSync(filepath); }
+    if (path__isExist(filepath)) { fs.unlinkSync(filepath); }
     return true;
 }
 
@@ -451,7 +451,7 @@ function dir__getFileListAsync(filepath) {
  * @returns {boolean} Возвращает удачно или неудачно закончилась операция
  */
 function dir__delete(path) {
-    if (file__isExist(path)) { fs.rmSync(path, { force: true, recursive: true }); }
+    if (path__isExist(path)) { fs.rmSync(path, { force: true, recursive: true }); }
     return true;
 }
 
@@ -570,170 +570,6 @@ function dir__getContentListAsync(filepath) {
     })
 }
 
-/**
- * @typedef DirList
- * @type {{
- *      dir: (string),
- *      path: (string),
- *      type: ('dit'|'file'),
- *      lastEdit?: (Date),
- *      files: (DirList[])
- * }}
- * @example
- *  [{
- *      dir: 'Nature Science',
- *      path: 'C:\\Users\\Cucumber\\Documents\\MyProjects\\2000.00-BaseInfo\\md\\Nature Science',
- *      lastEdit: 2023-03-05T01:45:34.218Z,
- *      type: 'dir',
- *      files: [ ... ]
- *  }]
- */
-
-/**
- * Получаем список файлов и папок
- * @param {string} filepath Путь к папке в из которой получаем список
- * @param {Object} [options={}] Набор опций, определяющий поведение функции
- * @param {boolean} options.getLastEdit Если true - записываем дату последнего редактирования {@link DirList.lastEdit}
- * @param {boolean} options.recursive Если true - рекурсивно получаем всю структуру папки
- * @returns {(DirList[]|-1)} Посмотри {@link DirList} чтобы понять структуру. В случае ошибки, вернет -1
- */
-// function getDirListSync(filepath, options = {}) {
-function getDirListSync(filepath, options = {}) {
-    const optionsDefault = { getLastEdit: false, recursive: true }
-    options = { ...optionsDefault, ...options }
-    const { getLastEdit, recursive } = options
-
-    function getDirListSyncDecoratable(filepath, result = []) {
-        fs.readdirSync(filepath).forEach((dir) => {
-            const fullPath = path.resolve(filepath, dir);
-            const dirStats = { dir, filepath: fullPath };
-            const stats = fs.statSync(fullPath);
-
-            if (getLastEdit) {
-                dirStats.lastEdit = stats.mtime;
-            }
-            if (stats.isDirectory()) {
-                dirStats.type = 'dir';
-                dirStats.files = [];
-                result.push(dirStats);
-            }
-            if (stats.isFile()) {
-                dirStats.type = 'file';
-                result.push(dirStats);
-            }
-
-            if (stats.isDirectory() && recursive) {
-                return getDirListSyncDecoratable(fullPath, dirStats.files)
-            }
-        })
-        return result;
-    }
-
-    try { return getDirListSyncDecoratable(filepath); }
-    catch { return -1; }
-}
-
-/**
- * @deprecated
- * @param {string} filepath 
- * @param {Object} options 
- * @returns 
- */
-function getDirList(filepath, options) {
-    const defaultOptions = { sync: true, recursive: false, getLastEdit: false }
-    options = { ...defaultOptions, ...options }
-
-    const { sync, recursive, getLastEdit } = options
-    if (recursive && sync) {
-        return getDirListSync(filepath, getLastEdit)
-    }
-
-    if (!recursive && !sync) {
-        return new Promise((resolve) => {
-            fs.readdir(filepath, (err, data) => {
-                if (err) { reject(err) }
-                else { resolve(data) }
-            })
-        })
-    }
-}
-
-/**
- * Сравнивает файлы по параметру, и возвращает подходящие
- * @param {(DirList[]|-1)} paths1 Список файлов и папок. Смотри {@link DirList}
- * @param {(DirList[]|-1)} paths2 Список файлов и папок. Смотри {@link DirList}
- * @param {Object.<string, string>} workingExts Набор разрешений файлов, с которыми работаем. Пример:
- * - Обрабатываем если разные разрешения и одно имя: { 'md': 'html' }
- * @param {function} compare Функция сравнения объектов. По умолчанию сравнивает даты
- * @returns {(DirList[]|-1)} Посмотри {@link DirList} чтобы понять структуру. В случае ошибки, вернет -1
- */
-const filesCompare = function (paths1, paths2, workingExts, compare) {
-    workingExts = { all: true, ...workingExts }
-    if (compare === undefined) { compare = (a, b) => a.lastEdit > b.lastEdit }
-
-    function checkFilesExt(ext1, ext2) {
-        if (ext1 === ext2) { return true; }
-        let res1 = workingExts[ext1];
-        if (res1 === ext2) { return true; }
-        return false;
-    }
-
-    function recursive(lpaths1, lpaths2, result = []) {
-        for (let i = 0; i < lpaths1.length; i++) {
-            const inpEl = lpaths1[i];
-            // Получаем данные о файле 1
-            const inpElFilepath = inpEl.dir;
-            const inpElName = edpDelFileExt(inpElFilepath);
-            const inpElExt = path.extname(inpElFilepath);
-            for (let j = 0; j < lpaths2.length; j++) {
-                const outEl = lpaths2[j];
-                // Получаем данные о файле 2
-                let outElFilepath = outEl.dir;
-                const outElName = edpDelFileExt(outElFilepath);
-                const outElExt = path.extname(outElFilepath);
-
-                //
-                console.log('--')
-                console.log(inpElFilepath)
-                console.log(outElFilepath)
-                console.log(inpEl.type);
-                // Если папка
-                if (inpEl.type === 'dir') {
-                    if (inpElFilepath === outElFilepath) {
-                        console.log('here');
-                        result = recursive(inpEl.files, outEl.files, result);
-                        break;
-                    }
-                    // if (j === lpaths2.length - 1) {
-                    //     result = recursive(inpEl.files, [{ dir: '', filepath: '', type: '', files: [] }], result);
-                    //     break;
-                    // }
-                } else {
-                    if (j === outEl.length - 1) {
-                        result.push(inpEl.filepath);
-                    } else {
-                        console.log('ok')
-                        console.log(inpEl, outEl)
-                        console.log(compare(inpEl, outEl))
-                        console.log(inpEl.lastEdit, outEl.lastEdit)
-                        console.log(inpEl.lastEdit > outEl.lastEdit, inpEl.lastEdit === outEl.lastEdit, inpEl.lastEdit < outEl.lastEdit)
-                        if (checkFilesExt(inpElExt, outElExt)) {
-                            if (compare(inpEl, outEl)) {
-                                result.push(inpEl.filepath, outElFilepath);
-                            }
-                        }
-                    }
-
-                }
-            }
-        }
-        return result;
-    }
-
-    return recursive(paths1, paths2);
-}
-
-
 module.exports = {
     path__join,
     path__updateSeparator,
@@ -756,8 +592,8 @@ module.exports = {
     path__replaceFileName,
     path__replaceExt,
 
-    file__isExist,
-    file__isExistAsync,
+    path__isExist,
+    path__isExistAsync,
     file__read,
     file__readAsync,
     file__readJSON,

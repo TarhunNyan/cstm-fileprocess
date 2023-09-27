@@ -132,19 +132,19 @@ describe(
         const data_JSON = { "name": "cstm-jssupport", "version": "0.0.1" };
 
         it("node__isExist", () => {
-            expect(fp.file__isExist(__filename)).toBe(true)
+            expect(fp.path__isExist(__filename)).toBe(true)
         })
 
         it("node__create, папка", () => {
-            expect(fp.node__create(testPath)).toBe(fp.file__isExist(testPath))
+            expect(fp.node__create(testPath)).toBe(fp.path__isExist(testPath))
         })
 
         it("node__create, файл", () => {
-            expect(fp.node__create(testPath_filename, data)).toBe(fp.file__isExist(testPath_filename))
+            expect(fp.node__create(testPath_filename, data)).toBe(fp.path__isExist(testPath_filename))
         })
 
         it("file__writeJSON, файл", () => {
-            expect(fp.file__writeJSON(testPath_filenameJSON, data_JSON)).toBe(fp.file__isExist(testPath_filenameJSON))
+            expect(fp.file__writeJSON(testPath_filenameJSON, data_JSON)).toBe(fp.path__isExist(testPath_filenameJSON))
         })
 
         it("file__read", () => {
@@ -156,11 +156,11 @@ describe(
         })
 
         it("file__delete", () => {
-            expect(fp.file__delete(testPath_filename)).toBe(!fp.file__isExist(testPath_filename));
+            expect(fp.file__delete(testPath_filename)).toBe(!fp.path__isExist(testPath_filename));
         })
 
         it("dir__delete", () => {
-            expect(fp.dir__delete(testPath)).toBe(!fp.file__isExist(testPath));
+            expect(fp.dir__delete(testPath)).toBe(!fp.path__isExist(testPath));
         })
     }
 );
