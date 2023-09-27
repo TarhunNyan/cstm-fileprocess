@@ -18,10 +18,11 @@ function path__join(paths) {
 /**
  * Системная информация о папке/файле. Дата последнего редактирования
  * @param {string} path Путь
- * @return {number} Дата последнего редактирования
+ * @return {number | undefined} Дата последнего редактирования
  */
 function path__statLastEdit(path) {
-    return fs.statSync(path).mtime;
+    if (path__isExist(path)) { return fs.statSync(path).mtime; }
+    return undefined;
 }
 
 /**
