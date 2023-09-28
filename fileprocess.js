@@ -100,7 +100,7 @@ function node__createAsync(filepath, data = '', isFile = undefined) {
 // function edpDelFileName(filepath) {
 function path__getDir(filepath) {
     const parsing = path.parse(filepath);
-    return path.resolve(parsing.dir);
+    return path.join(parsing.dir);
 }
 
 /**
@@ -236,7 +236,7 @@ function path__replaceDir(filepath, fromSubpath = '', toSubpath = '') {
 // function edpChangeFileExt(filepath, from, to) {
 function path__replaceFileName(filepath, newFileName) {
     const parsing = path.parse(filepath);
-    return path.resolve(parsing.dir, newFileName) + parsing.ext;
+    return path.join(parsing.dir, newFileName) + parsing.ext;
 }
 
 /**
@@ -249,7 +249,7 @@ function path__replaceFileName(filepath, newFileName) {
 function path__replaceExt(filepath, newExtension) {
     const parsing = path.parse(filepath);
     if (newExtension[0] != '.') { newExtension = '.' + newExtension; }
-    return path.resolve(parsing.dir, parsing.name) + newExtension;
+    return path.join(parsing.dir, parsing.name) + newExtension;
 }
 
 /**
