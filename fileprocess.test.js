@@ -53,6 +53,11 @@ describe(
             expect(fp.path__getByInd(basePath_filename, 1)).toBe('Users');
             expect(fp.path__getByInd(basePath_filename, -1)).toBe('file1.txt');
             expect(fp.path__getByInd(basePath_filename, -2)).toBe('.testFolder');
+            expect(fp.path__getByInd(basePath_filename, 1000)).toBe(undefined);
+        });
+
+        it("path__getLength", () => {
+            expect(fp.path__getLength(basePath_filename, 0)).toBe(9);
         });
     }
 )

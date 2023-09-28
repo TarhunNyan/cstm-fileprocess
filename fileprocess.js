@@ -4,61 +4,60 @@ const { promises } = require('dns');
 var fs = require('fs');
 var path = require('path');
 
-
 /**
  * Объединяем подпути в правильный путь. Дублирование path.join(синхронно)
- * @param {string[]} paths Путь к файлу
+ * @param {string[]} filepaths Пути к файлу
  * @return {string} Путь к папке с файлом 
  */
 // function join(paths) {
-function path__join(paths) {
-    return path.join(...paths);
+function path__join(filepaths) {
+    return path.join(...filepaths);
 }
 
 /**
  * Системная информация о папке/файле. Дата последнего редактирования
- * @param {string} path Путь
- * @return {number | undefined} Дата последнего редактирования
+ * @param {string} filepath Путь
+ * @return {Date | undefined} Дата последнего редактирования
  */
-function path__statLastEdit(path) {
-    if (path__isExist(path)) { return fs.statSync(path).mtime; }
+function path__statLastEdit(filepath) {
+    if (path__isExist(filepath)) { return fs.statSync(filepath).mtime; }
     return undefined;
 }
 
 /**
  * Приводим к одному виду путь
- * @param {string} path Путь
+ * @param {string} filepath Путь
  * @return {string} Путь с обновленным сепаратором
  */
-function path__updateSeparator(path) {
-    if (path.indexOf(path.sep) === -1) { return path__join([path]) }
-    return path;
+function path__updateSeparator(filepath) {
+    if (filepath.indexOf(path.sep) === -1) { return path__join([filepath]) }
+    return filepath;
 }
 
 /**
  * Создаем папку/файл по указанном пути
- * @param {string} path Путь к папке/файлу
+ * @param {string} filepath Путь к папке/файлу
  * @param {string} data Строка которая записывается в файл, если это файл
  * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
  * @return {undefined} 
  */
 // function mkdirSync(path, isFile = undefined, data = '') {
-function node__create(path, data = '', isFile = undefined) {
+function node__create(filepath, data = '', isFile = undefined) {
     if (isFile === undefined) {
-        const extension = path__getExt(path);
+        const extension = path__getExt(filepath);
         if (extension === '.') {
-            throw new Error(`У пути ${path} в конце точка, а extension не написан! `)
+            throw new Error(`У пути ${filepath} в конце точка, а extension не написан! `)
         }
         isFile = extension === '' ? false : true;
     }
 
     if (!isFile) {
-        fs.mkdirSync(path, { recursive: true });
+        fs.mkdirSync(filepath, { recursive: true });
         return true;
     }
     if (isFile) {
-        fs.mkdirSync(path__delFileName(path), { recursive: true });
-        file__write(path, data);
+        fs.mkdirSync(path__delFileName(filepath), { recursive: true });
+        file__write(filepath, data);
         return true;
     }
 
@@ -67,7 +66,7 @@ function node__create(path, data = '', isFile = undefined) {
 
 /**
  * Создаем папку/файл по указанном пути(асинхронно)
- * @param {string} paths Путь к папке/файлу
+ * @param {string} filepath Путь к папке/файлу
  * @param {string} data Строка которая записывается в файл, если это файл
  * @param {boolean | undefined} isFile Если true создаем в конце файл. Если undefined, то определяет по наличию extension
  * @return {promises}  Возвращает Promise:
@@ -75,21 +74,21 @@ function node__create(path, data = '', isFile = undefined) {
  * - Если ошибка записи, то reject(err)
  */
 // function mkdir(path, isFile = undefined, data = '') {
-function node__createAsync(path, data = '', isFile = undefined) {
+function node__createAsync(filepath, data = '', isFile = undefined) {
     if (isFile === undefined) {
-        const extension = path__getExt(path);
+        const extension = path__getExt(filepath);
         if (extension === '.') {
-            throw new Error(`У пути ${path} в конце точка, а extension не написан! `)
+            throw new Error(`У пути ${filepath} в конце точка, а extension не написан! `)
         }
         isFile = extension === '' ? false : true;
     }
 
     if (!isFile) {
-        return fs.mkdir(path, { recursive: true }, () => { });
+        return fs.mkdir(filepath, { recursive: true }, () => { });
     }
     if (isFile) {
-        fs.mkdirSync(path__delFileName(path), { recursive: true });
-        return writeFile(path, data);
+        fs.mkdirSync(path__delFileName(filepath), { recursive: true });
+        return writeFile(filepath, data);
     }
 }
 
@@ -141,13 +140,23 @@ function path__getExt(filepath) {
  * Получение папки/файла по индексу
  * @param {string} filepath Путь к файлу
  * @param {number} index Номер папки/файла в пути
- * @return Полуенное имя папки/файла
+ * @return {string | undefined} Полное имя папки/файла по индексу
  */
 // function edpChangeSubPath(filepath, fromSubpath, toSubpath) {
 function path__getByInd(filepath, index) {
     filepath = path__updateSeparator(filepath);
     const arr = filepath.split(path.sep);
     return arr.at(index);
+}
+
+/**
+ * Получаем количество папок/файлов в пути
+ * @param {string} filepath Путь
+ * @return {number} количество папок/файлов в пути
+ */
+function path__getLength(filepath) {
+    filepath = path__updateSeparator(filepath);
+    return filepath.split(path.sep).length;
 }
 
 /**
@@ -404,30 +413,30 @@ function file__delete(filepath) {
 
 /**
  * Получаем список файлов
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до файлов
  */
 // function getFileList(filepath) {
-function dir__getFileList(path) {
-    const cntList = fs.readdirSync(path);
-    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
+function dir__getFileList(filepath) {
+    const cntList = fs.readdirSync(filepath);
+    const newList = cntList.map(cnt => { return path__join([filepath, cnt]) });
     const res = [];
 
-    for (path of newList) { if (fs.statSync(path).isFile()) { res.push(path) } }
+    for (filepath of newList) { if (fs.statSync(filepath).isFile()) { res.push(filepath) } }
 
     return res;
 }
 
 /**
  * Получаем список файлов
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до файлов
  */
-function dir__getFileList_Recursive(path) {
-    const contentList = dir__getContentList_Recursive(path, true);
+function dir__getFileList_Recursive(filepath) {
+    const contentList = dir__getContentList_Recursive(filepath, true);
     const res = [];
 
-    for (path of contentList) { if (fs.statSync(path).isFile()) { res.push(path) } }
+    for (filepath of contentList) { if (fs.statSync(filepath).isFile()) { res.push(filepath) } }
 
     return res;
 }
@@ -457,41 +466,41 @@ function dir__getFileListAsync(filepath) {
 
 /**
  * Удаляем папку со всем содержимым с диска
- * @param {string} path Путь к папке
+ * @param {string} filepath Путь к папке
  * @returns {boolean} Возвращает удачно или неудачно закончилась операция
  */
-function dir__delete(path) {
-    if (path__isExist(path)) { fs.rmSync(path, { force: true, recursive: true }); }
+function dir__delete(filepath) {
+    if (path__isExist(filepath)) { fs.rmSync(filepath, { force: true, recursive: true }); }
     return true;
 }
 
 /**
  * Получаем список папок
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до папок
  */
 // function getFileList(path) {
-function dir__getDirList(path) {
-    const cntList = fs.readdirSync(path);
-    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
+function dir__getDirList(filepath) {
+    const cntList = fs.readdirSync(filepath);
+    const newList = cntList.map(cnt => { return path__join([filepath, cnt]) });
     const res = [];
 
-    for (path of newList) { if (fs.statSync(path).isDirectory()) { res.push(path) } }
+    for (filepath of newList) { if (fs.statSync(filepath).isDirectory()) { res.push(filepath) } }
 
     return res;
 }
 
 /**
  * Получаем список папок
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @param {boolean} isEndPoint Добавляет только папки являющиеся конечными
  * @returns {[string]} Массив с путями до папок
  */
-function dir__getDirList_Recursive(path, isEndPoint = false) {
-    const contentList = dir__getContentList_Recursive(path, isEndPoint);
+function dir__getDirList_Recursive(filepath, isEndPoint = false) {
+    const contentList = dir__getContentList_Recursive(filepath, isEndPoint);
     const res = [];
 
-    for (path of contentList) { if (fs.statSync(path).isDirectory()) { res.push(path) } }
+    for (filepath of contentList) { if (fs.statSync(filepath).isDirectory()) { res.push(filepath) } }
 
     return res;
 }
@@ -521,37 +530,37 @@ function dir__getDirListAsync(filepath) {
 
 /**
  * Получаем список папок/файлов
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @returns {[string]} Массив с путями до папок/файлов
  */
 // function getFileList(filepath) {
-function dir__getContentList(path) {
-    const cntList = fs.readdirSync(path);
-    const res = cntList.map(cnt => { return path__join([path, cnt]) });
+function dir__getContentList(filepath) {
+    const cntList = fs.readdirSync(filepath);
+    const res = cntList.map(cnt => { return path__join([filepath, cnt]) });
 
     return res;
 }
 
 /**
  * Получаем список папок/файлов рекурсивно
- * @param {string} path Путь к папке из которой получаем список
+ * @param {string} filepath Путь к папке из которой получаем список
  * @param {boolean} isEndPoint Добавляет только папки и файлы являющиеся конечными
  * @returns {[string]} Массив с путями до папок/файлов
  */
 // function getFileList(filepath) {
-function dir__getContentList_Recursive(path, isEndPoint = false) {
-    const cntList = fs.readdirSync(path);
-    const newList = cntList.map(cnt => { return path__join([path, cnt]) });
+function dir__getContentList_Recursive(filepath, isEndPoint = false) {
+    const cntList = fs.readdirSync(filepath);
+    const newList = cntList.map(cnt => { return path__join([filepath, cnt]) });
     const res = [];
 
-    for (path of newList) {
-        const stat = fs.statSync(path);
+    for (filepath of newList) {
+        const stat = fs.statSync(filepath);
         if (stat.isDirectory()) {
-            const contentDir = dir__getContentList_Recursive(path, isEndPoint);
-            if (contentDir.length === 0 || isEndPoint === false) { res.push(path); }
+            const contentDir = dir__getContentList_Recursive(filepath, isEndPoint);
+            if (contentDir.length === 0 || isEndPoint === false) { res.push(filepath); }
             if (contentDir.length != 0) { Array.prototype.push.apply(res, contentDir); }
         }
-        if (stat.isFile()) { res.push(path) }
+        if (stat.isFile()) { res.push(filepath) }
     }
 
     return res;
@@ -593,6 +602,7 @@ module.exports = {
     path__getLastName,
     path__getExt,
     path__getByInd,
+    path__getLength,
 
     path__delDir,
     path__delFileName,
