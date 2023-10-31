@@ -6,7 +6,7 @@ var path = require('path');
 
 /**
  * Разделительный знак для текущей системы. Дублирование path.sep
- * @return {string} Разделительный знак
+ * @return {string} Разделительный знак для текущей системы
  */
 function path__getSeparator() {
     return path.sep;
