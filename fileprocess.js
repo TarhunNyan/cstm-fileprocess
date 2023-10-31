@@ -5,6 +5,14 @@ var fs = require('fs');
 var path = require('path');
 
 /**
+ * Разделительный знак для текущей системы. Дублирование path.sep
+ * @return {string} Разделительный знак
+ */
+function path__getSeparator() {
+    return path.sep;
+}
+
+/**
  * Объединяем подпути в правильный путь. Дублирование path.join(синхронно)
  * @param {string[]} filepaths Пути к файлу
  * @return {string} Путь к папке с файлом 
@@ -615,6 +623,7 @@ module.exports = {
 
     path__isExist,
     path__isExistAsync,
+    path__getSeparator,
     file__read,
     file__readAsync,
     file__readJSON,
